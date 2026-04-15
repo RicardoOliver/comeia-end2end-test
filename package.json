@@ -1,0 +1,43 @@
+{
+  "name": "comeia-end2end-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Use 'npm run test:e2e'\"",
+    "test:e2e": "playwright test",
+    "test:e2e:gate": "playwright test --grep-invert @bug",
+    "test:e2e:bugs": "playwright test --grep @bug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:allure": "node -e \"const { spawnSync } = require('child_process'); const env = { ...process.env, ENABLE_ALLURE: '1' }; const r = process.platform === 'win32' ? spawnSync('cmd.exe', ['/d','/s','/c','npx playwright test'], { stdio: 'inherit', env }) : spawnSync('npx', ['playwright', 'test'], { stdio: 'inherit', env }); if (r.error) { console.error(r.error); process.exit(1); } process.exit(r.status ?? 1);\"",
+    "test:bdd": "cucumber-js --tags \"not @bug\"",
+    "test:bdd:bugs": "cucumber-js --tags \"@bug\"",
+    "allure:generate": "npx allure generate ./allure-results --clean -o ./allure-report",
+    "allure:open": "npx allure open ./allure-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.8.1",
+    "@playwright/test": "^1.59.1",
+    "allure-commandline": "^2.38.1",
+    "allure-playwright": "^3.7.1",
+    "playwright": "^1.59.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "allure-js-commons": "^3.7.1",
+    "charenc": "^0.0.2",
+    "crypt": "^0.0.2",
+    "is-buffer": "^1.1.6",
+    "md5": "^2.3.0",
+    "playwright-core": "^1.59.1"
+  }
+}
