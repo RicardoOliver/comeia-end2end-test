@@ -89,8 +89,8 @@ jobs:
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@1.1.0
         env:
-          JAVA_HOME: ''
-          JAVA_HOME_17_X64: ''
+          JAVA_HOME: /opt/jdk
+          JAVA_HOME_17_X64: /opt/jdk
         with:
           project: 'comeia-end2end-test'
           path: '.'
