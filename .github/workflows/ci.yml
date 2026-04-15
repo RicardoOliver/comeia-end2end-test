@@ -56,7 +56,6 @@ jobs:
 
   bug-hunt:
     runs-on: ubuntu-latest
-    continue-on-error: true
     env:
       BASE_URL: ${{ vars.BASE_URL || 'https://teste-colmeia-qa.colmeia-corp.com' }}
       APP_EMAIL: ${{ secrets.APP_EMAIL || vars.APP_EMAIL || 'qa@test.com' }}
@@ -70,7 +69,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps
       - run: npm run test:e2e:bugs
+        continue-on-error: true
       - run: npm run test:bdd:bugs
+        continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
