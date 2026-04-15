@@ -70,6 +70,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
+        continue-on-error: true
 
   bug-hunt:
     runs-on: ubuntu-latest
@@ -138,6 +139,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pages: write
       id-token: write
