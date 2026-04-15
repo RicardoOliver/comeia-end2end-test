@@ -90,13 +90,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@v4.1.0
+        uses: dependency-check/Dependency-Check_Action@1.1.0
         with:
           project: 'comeia-end2end-test'
           path: '.'
           format: 'HTML'
-          args: >
-            --failOnCVSS 7
+          others: '--failOnCVSS 7'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
