@@ -9,7 +9,10 @@ function requireEnv(name) {
   return value;
 }
 
-test('Login com credenciais válidas e navegação para Dashboard Campanha', async ({ page }) => {
+test(
+  'Login com credenciais válidas e navegação para Dashboard Campanha',
+  { tag: ['@smoke'] },
+  async ({ page }) => {
   requireEnv('APP_EMAIL');
   requireEnv('APP_PASSWORD');
   await page.goto('/');
@@ -25,7 +28,8 @@ test('Login com credenciais válidas e navegação para Dashboard Campanha', asy
   await page.goto('/dashboard/campanha', { waitUntil: 'domcontentloaded' });
   const heading = page.locator('h1:has-text("Campanha"), h2:has-text("Campanha"), h3:has-text("Campanha")');
   await expect(heading.first()).toBeVisible();
-});
+},
+);
 
 test(
   'Segurança: acesso direto a /dashboard/campanha sem login deve redirecionar para autenticação',

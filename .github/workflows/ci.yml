@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "**" ]
+  schedule:
+    - cron: "0 2 * * *"
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
@@ -34,8 +37,18 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: ENABLE_ALLURE=1 npm run test:e2e:gate
-      - run: npm run test:bdd
+      - name: Testes regression (push/PR + cron 02:00)
+        if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
+        run: ENABLE_ALLURE=1 npm run test:e2e:gate
+      - name: BDD regression (push/PR + cron 02:00)
+        if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
+        run: npm run test:bdd
+      - name: Testes smoke (cron 6h)
+        if: github.event_name == 'schedule' && github.event.schedule == '0 */6 * * *'
+        run: ENABLE_ALLURE=1 npm run test:e2e:smoke
+      - name: BDD smoke (cron 6h)
+        if: github.event_name == 'schedule' && github.event.schedule == '0 */6 * * *'
+        run: npm run test:bdd:smoke
       - name: Allure report (generate)
         if: always()
         run: |
@@ -64,6 +77,7 @@ jobs:
           path: allure-report
 
   bug-hunt:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
@@ -99,6 +113,7 @@ jobs:
             allure-report
 
   owasp-dependency-check:
+    if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
     runs-on: ubuntu-latest
     continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
@@ -136,6 +151,7 @@ jobs:
           path: ${{ github.workspace }}/reports
 
   trivy:
+    if: github.event_name != 'schedule' || github.event.schedule == '0 2 * * *'
     runs-on: ubuntu-latest
     continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
@@ -167,7 +183,7 @@ jobs:
           path: trivy-results.sarif
 
   pages-site:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && always()
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, bug-hunt, owasp-dependency-check, trivy]
     runs-on: ubuntu-latest
     steps:

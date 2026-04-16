@@ -24,7 +24,10 @@ async function doLogin(page, { email, password }) {
   await page.waitForLoadState('networkidle');
 }
 
-test('UX: link "Esqueceu sua senha?" deve funcionar (navegar ou abrir fluxo de recuperação)', async ({ page }) => {
+test(
+  'UX: link "Esqueceu sua senha?" deve funcionar (navegar ou abrir fluxo de recuperação)',
+  { tag: ['@smoke'] },
+  async ({ page }) => {
   await openLogin(page);
   const link = page.locator('a:has-text("Esqueceu sua senha"), button:has-text("Esqueceu sua senha")');
   await expect(link.first()).toBeVisible();
@@ -41,7 +44,8 @@ test('UX: link "Esqueceu sua senha?" deve funcionar (navegar ou abrir fluxo de r
     urlAfter !== urlBefore || hasRecoveryUi,
     'Clique em "Esqueceu sua senha?" não alterou a URL e não abriu nenhum fluxo visível de recuperação.',
   ).toBeTruthy();
-});
+},
+);
 
 test('Segurança: tentativa de login inválido não deve autenticar', async ({ page }) => {
   await doLogin(page, { email: 'invalido+e2e@teste.com', password: 'senha-incorreta' });

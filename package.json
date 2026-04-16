@@ -7,11 +7,13 @@
     "test": "echo \"Use 'npm run test:e2e'\"",
     "test:e2e": "playwright test",
     "test:e2e:gate": "playwright test --grep-invert @bug",
+    "test:e2e:smoke": "playwright test --grep @smoke --grep-invert @bug",
     "test:e2e:bugs": "playwright test --grep @bug",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "test:e2e:allure": "node -e \"const { spawnSync } = require('child_process'); const env = { ...process.env, ENABLE_ALLURE: '1' }; const r = process.platform === 'win32' ? spawnSync('cmd.exe', ['/d','/s','/c','npx playwright test'], { stdio: 'inherit', env }) : spawnSync('npx', ['playwright', 'test'], { stdio: 'inherit', env }); if (r.error) { console.error(r.error); process.exit(1); } process.exit(r.status ?? 1);\"",
     "test:bdd": "cucumber-js --tags \"not @bug\"",
+    "test:bdd:smoke": "cucumber-js --tags \"@smoke and not @bug\"",
     "test:bdd:bugs": "cucumber-js --tags \"@bug\"",
     "allure:generate": "npx allure generate ./allure-results --clean -o ./allure-report",
     "allure:open": "npx allure open ./allure-report"
