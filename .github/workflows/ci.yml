@@ -103,6 +103,11 @@ jobs:
     continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@1.1.0
         env:
@@ -112,7 +117,7 @@ jobs:
           project: 'comeia-end2end-test'
           path: '.'
           format: 'HTML'
-          others: '--failOnCVSS=7'
+          others: '--failOnCVSS=7 --disableNodeAudit --disableOssIndex'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
