@@ -10,6 +10,13 @@ function resetDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
 
+function firstExistingPath(paths) {
+  for (const p of paths) {
+    if (p && fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 function safeCopyDir(from, to) {
   if (!fs.existsSync(from)) return false;
   fs.mkdirSync(path.dirname(to), { recursive: true });
@@ -81,42 +88,42 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
       ? `${runInfo.serverUrl}/${runInfo.repo}/commit/${runInfo.sha}`
       : null;
 
-  const cards = [
-    {
-      title: 'Playwright (HTML)',
-      description: 'Relatório de execução com evidências (screenshots, vídeos, traces).',
-      href: reports.playwright ? './playwright/' : null,
-    },
-    {
-      title: 'Allure',
-      description: 'Relatório consolidado com categorias, anexos e metadados de execução.',
-      href: reports.allure ? './allure/' : null,
-    },
-    {
-      title: 'Cucumber',
-      description: 'Relatórios JSON/JUnit gerados pelo BDD (Gherkin).',
-      href: reports.cucumber ? './cucumber/' : null,
-    },
-  ];
+  const gate = reports.gate || {};
+  const bugs = reports.bugs || {};
+  const security = reports.security || {};
 
-  const badge = cucumberSummary
-    ? `<div class="kpi">
-         <div class="kpi-title">BDD (Cucumber)</div>
-         <div class="kpi-value">${cucumberSummary.passed}<span class="kpi-sub">/${cucumberSummary.scenarios}</span></div>
-         <div class="kpi-foot">${cucumberSummary.failed} com falha</div>
-       </div>`
-    : `<div class="kpi">
-         <div class="kpi-title">BDD (Cucumber)</div>
-         <div class="kpi-value">—</div>
-         <div class="kpi-foot">Sem dados</div>
-       </div>`;
+  const kpiBdd =
+    cucumberSummary && cucumberSummary.gate
+      ? `<div class="kpi">
+           <div class="kpi-title">BDD (Gate)</div>
+           <div class="kpi-value">${cucumberSummary.gate.passed}<span class="kpi-sub">/${cucumberSummary.gate.scenarios}</span></div>
+           <div class="kpi-foot">${cucumberSummary.gate.failed} com falha</div>
+         </div>`
+      : `<div class="kpi">
+           <div class="kpi-title">BDD (Gate)</div>
+           <div class="kpi-value">—</div>
+           <div class="kpi-foot">Sem dados</div>
+         </div>`;
 
-  const failedList =
-    cucumberSummary && cucumberSummary.failedScenarios.length
+  const kpiBugs =
+    cucumberSummary && cucumberSummary.bugs
+      ? `<div class="kpi">
+           <div class="kpi-title">BDD (@bug)</div>
+           <div class="kpi-value">${cucumberSummary.bugs.passed}<span class="kpi-sub">/${cucumberSummary.bugs.scenarios}</span></div>
+           <div class="kpi-foot">${cucumberSummary.bugs.failed} com falha</div>
+         </div>`
+      : `<div class="kpi">
+           <div class="kpi-title">BDD (@bug)</div>
+           <div class="kpi-value">—</div>
+           <div class="kpi-foot">Sem dados</div>
+         </div>`;
+
+  const bddFailDetails =
+    cucumberSummary?.bugs?.failedScenarios?.length
       ? `<details class="details">
-           <summary>Falhas do BDD (${cucumberSummary.failedScenarios.length})</summary>
+           <summary>Falhas do BDD (@bug) (${cucumberSummary.bugs.failedScenarios.length})</summary>
            <ul class="list">
-             ${cucumberSummary.failedScenarios
+             ${cucumberSummary.bugs.failedScenarios
                .slice(0, 25)
                .map(
                  (f) =>
@@ -124,7 +131,7 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
                )
                .join('')}
            </ul>
-           ${cucumberSummary.failedScenarios.length > 25 ? '<div class="muted">Lista truncada.</div>' : ''}
+           ${cucumberSummary.bugs.failedScenarios.length > 25 ? '<div class="muted">Lista truncada.</div>' : ''}
          </details>`
       : '';
 
@@ -187,6 +194,7 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
       }
       .card h3 { margin: 0; font-size: 16px; }
       .card p { margin: 8px 0 12px; color: var(--muted); line-height: 1.45; }
+      .card .tag { display:inline-flex; align-items:center; gap:6px; font-size:11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); margin-left: 8px; }
       .btn {
         display: inline-flex;
         align-items: center;
@@ -197,6 +205,7 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
         background: rgba(0,0,0,0.18);
         color: var(--text);
       }
+      .btnrow { display:flex; flex-wrap: wrap; gap: 10px; }
       .btn.disabled { opacity: 0.4; pointer-events: none; }
       .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
       .panel {
@@ -227,9 +236,9 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
     <div class="wrap">
       <div class="top">
         <div>
-          <div class="title">QA Dashboard</div>
+          <div class="title">Relatórios e Artefatos</div>
           <div class="subtitle">
-            Acompanhe os relatórios de execução e evidências geradas no CI (gate e caça-bugs).
+            Central de evidências do pipeline: execução gate, caça-bugs, relatórios e varreduras de segurança.
           </div>
         </div>
         <div class="meta">
@@ -241,51 +250,50 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
       </div>
 
       <div class="grid">
-        ${cards
-          .map((c) => {
-            const disabled = !c.href;
-            return `<div class="card">
-              <h3>${htmlEscape(c.title)}</h3>
-              <p>${htmlEscape(c.description)}</p>
-              <a class="btn ${disabled ? 'disabled' : ''}" href="${disabled ? '#' : c.href}">
-                Abrir relatório
-              </a>
-            </div>`;
-          })
-          .join('')}
+        <div class="card" style="grid-column: span 6;">
+          <h3>Relatório principal <span class="tag">Recomendado</span></h3>
+          <p>Visão consolidada da execução com anexos e categorias.</p>
+          <div class="btnrow">
+            <a class="btn ${gate.allure ? '' : 'disabled'}" href="${gate.allure ? './gate/allure/' : '#'}">Abrir Allure (Gate)</a>
+            <a class="btn ${bugs.allure ? '' : 'disabled'}" href="${bugs.allure ? './bugs/allure/' : '#'}">Abrir Allure (@bug)</a>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 6;">
+          <h3>Relatórios HTML</h3>
+          <p>Relatórios Playwright com evidências (screenshot/vídeo/trace).</p>
+          <div class="btnrow">
+            <a class="btn ${gate.playwright ? '' : 'disabled'}" href="${gate.playwright ? './gate/playwright/' : '#'}">Abrir Playwright (Gate)</a>
+            <a class="btn ${bugs.playwright ? '' : 'disabled'}" href="${bugs.playwright ? './bugs/playwright/' : '#'}">Abrir Playwright (@bug)</a>
+          </div>
+        </div>
       </div>
 
       <div class="row">
         <div class="panel">
           <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">
             <div style="font-weight:700;">Resumo</div>
-            <div class="muted">Dados de gate (quando disponíveis)</div>
+            <div class="muted">Gate e caça-bugs</div>
           </div>
           <div class="kpis">
-            ${badge}
+            ${kpiBdd}
+            ${kpiBugs}
             <div class="kpi">
-              <div class="kpi-title">Documentação</div>
-              <div class="kpi-value">2</div>
-              <div class="kpi-foot"><a href="${runInfo.serverUrl && runInfo.repo ? `${runInfo.serverUrl}/${runInfo.repo}` : '#'}">Ver no repositório</a></div>
-            </div>
-            <div class="kpi">
-              <div class="kpi-title">Inconsistência</div>
+              <div class="kpi-title">Inconsistências</div>
               <div class="kpi-value" style="color: var(--warn);">1</div>
-              <div class="kpi-foot">Autorização (acesso sem login)</div>
+              <div class="kpi-foot"><a href="./docs/INCONSISTENCIAS_REGISTRADAS.md">Ver registro</a></div>
             </div>
           </div>
-          ${failedList}
+          ${bddFailDetails}
         </div>
 
         <div class="panel">
-          <div style="font-weight:700;">Links rápidos</div>
-          <div class="muted" style="margin-top:6px;">
-            <div><span class="mono">/playwright</span> — relatório Playwright</div>
-            <div><span class="mono">/allure</span> — relatório Allure</div>
-            <div><span class="mono">/cucumber</span> — JSON/JUnit do BDD</div>
-          </div>
-          <div class="muted" style="margin-top:12px;">
-            Dica: em falhas, use os anexos de screenshot/vídeo/trace nos relatórios para reproduzir o cenário.
+          <div style="font-weight:700;">Artefatos e segurança</div>
+          <div class="muted" style="margin-top:10px; line-height:1.8;">
+            <div><a class="${gate.cucumber ? '' : 'disabled'}" href="${gate.cucumber ? './gate/cucumber/' : '#'}">BDD (Gate): JSON/JUnit</a></div>
+            <div><a class="${bugs.cucumber ? '' : 'disabled'}" href="${bugs.cucumber ? './bugs/cucumber/' : '#'}">BDD (@bug): JSON/JUnit</a></div>
+            <div><a class="${security.owasp ? '' : 'disabled'}" href="${security.owasp ? './security/owasp/' : '#'}">OWASP Dependency-Check (HTML)</a></div>
+            <div><a class="${security.trivy ? '' : 'disabled'}" href="${security.trivy ? './security/trivy/trivy-results.sarif' : '#'}">Trivy (SARIF)</a></div>
+            <div><a href="./docs/">Docs do projeto</a></div>
           </div>
         </div>
       </div>
@@ -299,18 +307,61 @@ function main() {
   const siteDir = path.join(root, 'site');
   resetDir(siteDir);
 
-  const hasPlaywright = safeCopyDir(path.join(root, 'playwright-report'), path.join(siteDir, 'playwright'));
-  const hasAllure = safeCopyDir(path.join(root, 'allure-report'), path.join(siteDir, 'allure'));
+  const artifactsDir = path.resolve(root, process.env.ARTIFACTS_DIR || 'artifacts');
+  const gateDir = path.join(artifactsDir, 'gate');
+  const bugsDir = path.join(artifactsDir, 'bugs');
+  const securityDir = path.join(artifactsDir, 'security');
 
-  const cucumberDir = path.join(siteDir, 'cucumber');
-  ensureDir(cucumberDir);
-  const hasCucumber =
-    safeCopyFile(path.join(root, 'reports', 'cucumber-report.json'), path.join(cucumberDir, 'cucumber-report.json')) ||
-    safeCopyFile(path.join(root, 'reports', 'cucumber-junit.xml'), path.join(cucumberDir, 'cucumber-junit.xml'));
-  safeCopyFile(path.join(root, 'reports', 'cucumber-junit.xml'), path.join(cucumberDir, 'cucumber-junit.xml'));
+  const gatePlaywrightFrom = firstExistingPath([path.join(gateDir, 'playwright-report'), path.join(root, 'playwright-report')]);
+  const gateAllureFrom = firstExistingPath([path.join(gateDir, 'allure-report'), path.join(root, 'allure-report')]);
+  const gateCucumberFrom = firstExistingPath([path.join(gateDir, 'cucumber'), path.join(root, 'reports')]);
 
-  const cucumberJson = readJsonIfExists(path.join(root, 'reports', 'cucumber-report.json'));
-  const cucumberSummary = computeCucumberSummary(cucumberJson);
+  const bugsPlaywrightFrom = firstExistingPath([path.join(bugsDir, 'playwright-report')]);
+  const bugsAllureFrom = firstExistingPath([path.join(bugsDir, 'allure-report')]);
+  const bugsCucumberFrom = firstExistingPath([path.join(bugsDir, 'reports')]);
+
+  const owaspFrom = firstExistingPath([path.join(securityDir, 'owasp')]);
+  const trivySarifFrom = firstExistingPath([path.join(securityDir, 'trivy', 'trivy-results.sarif')]);
+
+  const hasGatePlaywright = gatePlaywrightFrom
+    ? safeCopyDir(gatePlaywrightFrom, path.join(siteDir, 'gate', 'playwright'))
+    : false;
+  const hasGateAllure = gateAllureFrom ? safeCopyDir(gateAllureFrom, path.join(siteDir, 'gate', 'allure')) : false;
+
+  const hasBugsPlaywright = bugsPlaywrightFrom
+    ? safeCopyDir(bugsPlaywrightFrom, path.join(siteDir, 'bugs', 'playwright'))
+    : false;
+  const hasBugsAllure = bugsAllureFrom ? safeCopyDir(bugsAllureFrom, path.join(siteDir, 'bugs', 'allure')) : false;
+
+  const gateCucumberDir = path.join(siteDir, 'gate', 'cucumber');
+  ensureDir(gateCucumberDir);
+  const hasGateCucumber =
+    (gateCucumberFrom &&
+      (safeCopyFile(path.join(gateCucumberFrom, 'cucumber-report.json'), path.join(gateCucumberDir, 'cucumber-report.json')) ||
+        safeCopyFile(path.join(gateCucumberFrom, 'cucumber-junit.xml'), path.join(gateCucumberDir, 'cucumber-junit.xml')))) ||
+    false;
+  safeCopyFile(path.join(gateCucumberFrom || '', 'cucumber-junit.xml'), path.join(gateCucumberDir, 'cucumber-junit.xml'));
+
+  const bugsCucumberDir = path.join(siteDir, 'bugs', 'cucumber');
+  ensureDir(bugsCucumberDir);
+  const hasBugsCucumber =
+    (bugsCucumberFrom &&
+      (safeCopyFile(path.join(bugsCucumberFrom, 'cucumber-report.json'), path.join(bugsCucumberDir, 'cucumber-report.json')) ||
+        safeCopyFile(path.join(bugsCucumberFrom, 'cucumber-junit.xml'), path.join(bugsCucumberDir, 'cucumber-junit.xml')))) ||
+    false;
+  safeCopyFile(path.join(bugsCucumberFrom || '', 'cucumber-junit.xml'), path.join(bugsCucumberDir, 'cucumber-junit.xml'));
+
+  const hasOwasp = owaspFrom ? safeCopyDir(owaspFrom, path.join(siteDir, 'security', 'owasp')) : false;
+  const hasTrivy = trivySarifFrom ? safeCopyFile(trivySarifFrom, path.join(siteDir, 'security', 'trivy', 'trivy-results.sarif')) : false;
+
+  safeCopyDir(path.join(root, 'doc'), path.join(siteDir, 'docs'));
+
+  const gateCucumberJson = readJsonIfExists(path.join(gateCucumberDir, 'cucumber-report.json'));
+  const bugsCucumberJson = readJsonIfExists(path.join(bugsCucumberDir, 'cucumber-report.json'));
+  const cucumberSummary = {
+    gate: computeCucumberSummary(gateCucumberJson),
+    bugs: computeCucumberSummary(bugsCucumberJson),
+  };
 
   const runInfo = {
     serverUrl: process.env.GITHUB_SERVER_URL,
@@ -323,7 +374,11 @@ function main() {
 
   const indexHtml = buildIndexHtml({
     runInfo,
-    reports: { playwright: hasPlaywright, allure: hasAllure, cucumber: hasCucumber },
+    reports: {
+      gate: { playwright: hasGatePlaywright, allure: hasGateAllure, cucumber: hasGateCucumber },
+      bugs: { playwright: hasBugsPlaywright, allure: hasBugsAllure, cucumber: hasBugsCucumber },
+      security: { owasp: hasOwasp, trivy: hasTrivy },
+    },
     cucumberSummary,
   });
 
