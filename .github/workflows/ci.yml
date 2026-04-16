@@ -109,15 +109,26 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@1.1.0
         env:
-          JAVA_HOME: /opt/jdk
-          JAVA_HOME_17_X64: /opt/jdk
-        with:
-          project: 'comeia-end2end-test'
-          path: '.'
-          format: 'HTML'
-          others: '--failOnCVSS=7 --disableNodeAudit --disableOssIndex'
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          mkdir -p reports
+          EXTRA_ARGS=""
+          if [ -n "${NVD_API_KEY}" ]; then
+            EXTRA_ARGS="--nvdApiKey ${NVD_API_KEY}"
+          fi
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/github/workspace" \
+            owasp/dependency-check-action:latest \
+            --project "comeia-end2end-test" \
+            --scan "." \
+            --format "HTML" \
+            --out "/github/workspace/reports" \
+            --noupdate \
+            --failOnCVSS 7 \
+            --disableNodeAudit \
+            --disableOssIndex \
+            ${EXTRA_ARGS}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
