@@ -40,6 +40,90 @@ function readJsonIfExists(filePath) {
   }
 }
 
+function writeHtml(filePath, html) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, html, 'utf8');
+}
+
+function writeSimpleIndex({ title, filePath, links }) {
+  const rows = links
+    .filter((l) => l && l.href && l.label)
+    .map(
+      (l) =>
+        `<li><a class="mono" href="${htmlEscape(l.href)}">${htmlEscape(l.label)}</a><div class="muted">${htmlEscape(l.description || '')}</div></li>`,
+    )
+    .join('');
+
+  writeHtml(
+    filePath,
+    `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>${htmlEscape(title)}</title>
+    <style>
+      :root { --bg:#0b1020; --panel: rgba(255,255,255,0.06); --text: rgba(255,255,255,0.92); --muted: rgba(255,255,255,0.65); --border: rgba(255,255,255,0.12); --accent: #6aa8ff; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: var(--text); background: var(--bg); }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 26px 18px; }
+      .title { font-size: 22px; font-weight: 700; }
+      .panel { margin-top: 14px; border: 1px solid var(--border); background: var(--panel); border-radius: 14px; padding: 14px; }
+      ul { margin: 10px 0 0; padding-left: 18px; }
+      li { margin: 10px 0; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12.5px; }
+      .muted { color: var(--muted); margin-top: 4px; }
+      .back { margin-top: 12px; display: inline-block; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title">${htmlEscape(title)}</div>
+      <div class="panel">
+        <ul>${rows || '<li class="muted">Sem arquivos disponíveis.</li>'}</ul>
+      </div>
+      <a class="back" href="../index.html">← Voltar</a>
+    </div>
+  </body>
+</html>`,
+  );
+}
+
+function writeTextPage({ title, filePath, content }) {
+  writeHtml(
+    filePath,
+    `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>${htmlEscape(title)}</title>
+    <style>
+      :root { --bg:#0b1020; --panel: rgba(255,255,255,0.06); --text: rgba(255,255,255,0.92); --muted: rgba(255,255,255,0.65); --border: rgba(255,255,255,0.12); --accent: #6aa8ff; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: var(--text); background: var(--bg); }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 26px 18px; }
+      .title { font-size: 22px; font-weight: 700; }
+      .panel { margin-top: 14px; border: 1px solid var(--border); background: var(--panel); border-radius: 14px; padding: 14px; }
+      pre { margin:0; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12.5px; color: var(--text); }
+      .back { margin-top: 12px; display: inline-block; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title">${htmlEscape(title)}</div>
+      <div class="panel"><pre>${htmlEscape(content)}</pre></div>
+      <a class="back" href="./index.html">← Voltar</a>
+    </div>
+  </body>
+</html>`,
+  );
+}
+
 function computeCucumberSummary(cucumberJson) {
   if (!Array.isArray(cucumberJson)) return null;
   let scenarios = 0;
@@ -280,7 +364,7 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
             <div class="kpi">
               <div class="kpi-title">Inconsistências</div>
               <div class="kpi-value" style="color: var(--warn);">1</div>
-              <div class="kpi-foot"><a href="./docs/INCONSISTENCIAS_REGISTRADAS.md">Ver registro</a></div>
+              <div class="kpi-foot"><a href="./docs/INCONSISTENCIAS_REGISTRADAS.html">Ver registro</a></div>
             </div>
           </div>
           ${bddFailDetails}
@@ -289,11 +373,11 @@ function buildIndexHtml({ runInfo, reports, cucumberSummary }) {
         <div class="panel">
           <div style="font-weight:700;">Artefatos e segurança</div>
           <div class="muted" style="margin-top:10px; line-height:1.8;">
-            <div><a class="${gate.cucumber ? '' : 'disabled'}" href="${gate.cucumber ? './gate/cucumber/' : '#'}">BDD (Gate): JSON/JUnit</a></div>
-            <div><a class="${bugs.cucumber ? '' : 'disabled'}" href="${bugs.cucumber ? './bugs/cucumber/' : '#'}">BDD (@bug): JSON/JUnit</a></div>
-            <div><a class="${security.owasp ? '' : 'disabled'}" href="${security.owasp ? './security/owasp/' : '#'}">OWASP Dependency-Check (HTML)</a></div>
-            <div><a class="${security.trivy ? '' : 'disabled'}" href="${security.trivy ? './security/trivy/trivy-results.sarif' : '#'}">Trivy (SARIF)</a></div>
-            <div><a href="./docs/">Docs do projeto</a></div>
+            <div><a class="${gate.cucumber ? '' : 'disabled'}" href="${gate.cucumber ? './gate/cucumber/index.html' : '#'}">BDD (Gate): JSON/JUnit</a></div>
+            <div><a class="${bugs.cucumber ? '' : 'disabled'}" href="${bugs.cucumber ? './bugs/cucumber/index.html' : '#'}">BDD (@bug): JSON/JUnit</a></div>
+            <div><a class="${security.owasp ? '' : 'disabled'}" href="${security.owasp ? './security/owasp/index.html' : '#'}">OWASP Dependency-Check (HTML)</a></div>
+            <div><a class="${security.trivy ? '' : 'disabled'}" href="${security.trivy ? './security/trivy/index.html' : '#'}">Trivy (SARIF)</a></div>
+            <div><a href="./docs/index.html">Docs do projeto</a></div>
           </div>
         </div>
       </div>
@@ -355,6 +439,100 @@ function main() {
   const hasTrivy = trivySarifFrom ? safeCopyFile(trivySarifFrom, path.join(siteDir, 'security', 'trivy', 'trivy-results.sarif')) : false;
 
   safeCopyDir(path.join(root, 'doc'), path.join(siteDir, 'docs'));
+
+  writeSimpleIndex({
+    title: 'BDD (Gate) — Relatórios',
+    filePath: path.join(siteDir, 'gate', 'cucumber', 'index.html'),
+    links: [
+      {
+        label: 'cucumber-report.json',
+        href: './cucumber-report.json',
+        description: 'Relatório JSON do BDD (gate).',
+      },
+      {
+        label: 'cucumber-junit.xml',
+        href: './cucumber-junit.xml',
+        description: 'Relatório JUnit XML do BDD (gate).',
+      },
+    ],
+  });
+
+  writeSimpleIndex({
+    title: 'BDD (@bug) — Relatórios',
+    filePath: path.join(siteDir, 'bugs', 'cucumber', 'index.html'),
+    links: [
+      {
+        label: 'cucumber-report.json',
+        href: './cucumber-report.json',
+        description: 'Relatório JSON do BDD (@bug).',
+      },
+      {
+        label: 'cucumber-junit.xml',
+        href: './cucumber-junit.xml',
+        description: 'Relatório JUnit XML do BDD (@bug).',
+      },
+    ],
+  });
+
+  writeSimpleIndex({
+    title: 'OWASP Dependency-Check — Relatório',
+    filePath: path.join(siteDir, 'security', 'owasp', 'index.html'),
+    links: [
+      {
+        label: 'dependency-check-report.html',
+        href: './dependency-check-report.html',
+        description: 'Relatório HTML do OWASP Dependency-Check.',
+      },
+    ],
+  });
+
+  writeSimpleIndex({
+    title: 'Trivy — Resultados',
+    filePath: path.join(siteDir, 'security', 'trivy', 'index.html'),
+    links: [
+      {
+        label: 'trivy-results.sarif',
+        href: './trivy-results.sarif',
+        description: 'Resultados Trivy em SARIF (para análise/ingestão).',
+      },
+    ],
+  });
+
+  const docsDir = path.join(siteDir, 'docs');
+  writeSimpleIndex({
+    title: 'Docs do projeto',
+    filePath: path.join(docsDir, 'index.html'),
+    links: [
+      {
+        label: 'Partição de Equivalência',
+        href: './PARTICAO_EQUIVALENCIA.html',
+        description: 'Partições e classes de equivalência do escopo.',
+      },
+      {
+        label: 'Inconsistências Registradas',
+        href: './INCONSISTENCIAS_REGISTRADAS.html',
+        description: 'Registro de inconsistências com passos e observado vs. esperado.',
+      },
+    ],
+  });
+
+  const partEqPath = path.join(docsDir, 'PARTICAO_EQUIVALENCIA.md');
+  if (fs.existsSync(partEqPath)) {
+    writeTextPage({
+      title: 'Partição de Equivalência',
+      filePath: path.join(docsDir, 'PARTICAO_EQUIVALENCIA.html'),
+      content: fs.readFileSync(partEqPath, 'utf8'),
+    });
+  }
+
+  const incPath = path.join(docsDir, 'INCONSISTENCIAS_REGISTRADAS.md');
+  if (fs.existsSync(incPath)) {
+    writeTextPage({
+      title: 'Inconsistências Registradas',
+      filePath: path.join(docsDir, 'INCONSISTENCIAS_REGISTRADAS.html'),
+      content: fs.readFileSync(incPath, 'utf8'),
+    });
+  }
 
   const gateCucumberJson = readJsonIfExists(path.join(gateCucumberDir, 'cucumber-report.json'));
   const bugsCucumberJson = readJsonIfExists(path.join(bugsCucumberDir, 'cucumber-report.json'));
